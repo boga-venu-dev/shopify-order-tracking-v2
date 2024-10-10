@@ -1,0 +1,27 @@
+{
+  "name": "order-tracking-app",
+  "version": "1.0.0",
+  "description": "Shopify Order Tracking Application",
+  "main": "app.js",
+  "scripts": {
+    "start": "pm2 start app.js --name 'order-tracking'",
+    "dev": "nodemon app.js"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "axios": "^0.21.1",
+    "node-cache": "^5.1.2",
+    "express-rate-limit": "^5.2.6",
+    "helmet": "^4.6.0",
+    "winston": "^3.3.3",
+    "graphql-request": "^3.4.0",
+    "graphql": "^15.5.0",
+    "dotenv": "^10.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.7"
+  },
+  "engines": {
+    "node": "14.x"
+  }
+}
