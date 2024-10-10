@@ -4,7 +4,7 @@
   "description": "Shopify Order Tracking Application",
   "main": "app.js",
   "scripts": {
-    "start": "pm2 start app.js --name 'order-tracking'",
+    "start": "pm2 start app.js --name 'order-tracking' --cwd '/home/yourusername/order-tracking/shopify-order-tracking-v2'",
     "dev": "nodemon app.js"
   },
   "dependencies": {
