@@ -4,13 +4,33 @@ const NodeCache = require('node-cache');
 const { GraphQLClient, gql } = require('graphql-request');
 const RateLimit = require('express-rate-limit');
 const Queue = require('better-queue');
+const helmet = require('helmet');
+const winston = require('winston');
 
 const app = express();
 
 // Enable trust proxy
 app.set('trust proxy', 1);
 
+app.use(helmet());
+
 app.use(express.json());
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  defaultMeta: { service: 'order-tracking' },
+  transports: [
+    new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'combined.log' }),
+  ],
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.simple(),
+  }));
+}
 
 // Initialize cache
 const cache = new NodeCache({ stdTTL: 3600, maxKeys: 1000 });
@@ -27,8 +47,8 @@ const SHOP = process.env.SHOPIFY_SHOP_NAME;
 const API_PASSWORD = process.env.SHOPIFY_API_PASSWORD;
 const API_VERSION = '2024-01';
 
-console.log('Shop Name:', SHOP);
-console.log('API Version:', API_VERSION);
+logger.info('Shop Name:', SHOP);
+logger.info('API Version:', API_VERSION);
 
 const shopifyApi = axios.create({
   baseURL: `https://${SHOP}/admin/api/${API_VERSION}`,
@@ -241,42 +261,42 @@ async function searchOrdersByPhone(phone) {
 
 app.post('/get_orders', async (req, res) => {
   const { contact_type, contact_info } = req.body;
-  console.log('Received request:', { contact_type, contact_info });
+  logger.info('Received request:', { contact_type, contact_info });
 
   const cacheKey = `${contact_type}-${contact_info}`;
 
   try {
     const cachedResult = cache.get(cacheKey);
     if (cachedResult) {
-      console.log('Returning cached result for:', cacheKey);
+      logger.info('Returning cached result for:', cacheKey);
       return res.json(cachedResult);
     }
 
-    // Queue the request
-    requestQueue.push({
-      type: contact_type,
-      info: contact_info
-    }, (err, result) => {
-      if (err) {
-        console.error('Error processing request:', err);
-        return res.status(500).json({ error: 'An error occurred while fetching the order information' });
-      }
+    let orders;
+    if (contact_type === 'email') {
+      orders = await searchOrdersByEmail(contact_info);
+    } else if (contact_type === 'phone') {
+      orders = await searchOrdersByPhone(contact_info);
+    } else {
+      return res.status(400).json({ error: 'Invalid contact type' });
+    }
 
-      console.log('Total orders fetched:', result.length);
+    logger.info('Total orders fetched:', orders.length);
 
-      if (result.length <= 1000) {
-        cache.set(cacheKey, result);
-      }
+    if (orders.length <= 1000) {
+      cache.set(cacheKey, orders);
+    }
 
-      console.log('Sending response:', result.length, 'orders');
-      res.json(result);
-    });
+    logger.info('Sending response:', orders.length, 'orders');
+    res.json(orders);
 
   } catch (error) {
-    console.error('Error in /get_orders:', error.message);
+    logger.error('Error in /get_orders:', error.message);
     res.status(500).json({ error: 'An error occurred while fetching the order information' });
   }
 });
+
+
 
 
 const PORT = process.env.PORT || 3000;
