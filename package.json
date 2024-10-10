@@ -12,6 +12,7 @@
     "axios": "^1.7.7",
     "node-cache": "^5.1.2",
     "express-rate-limit": "^5.2.6",
+    "better-queue": "^3.8.12",
     "helmet": "^4.6.0",
     "winston": "^3.3.3",
     "graphql-request": "^3.4.0",
